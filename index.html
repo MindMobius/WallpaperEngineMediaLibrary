@@ -58,8 +58,10 @@
         .skeleton .card { background-color: #2a2a2a; } .skeleton .card-title, .skeleton .card-tags { background-color: #444; border-radius: 4px; }
         .skeleton .card-title { height: 20px; width: 70%; margin-bottom: 15px; } .skeleton .card-tags { height: 15px; width: 50%; }
         .dialog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dialog-bg); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease; }
-        .dialog-overlay.visible { opacity: 1; visibility: visible; } .dialog-content { position: relative; width: 80%; max-width: 1280px; max-height: 80%; }
-        #player { width: 100%; height: 100%; border-radius: 6px; } .close-btn { position: absolute; top: -45px; right: -10px; font-size: 2.5em; color: #fff; cursor: pointer; line-height: 1; user-select: none; }
+        .dialog-overlay.visible { opacity: 1; visibility: visible; } 
+        .dialog-content {position: relative;display: flex;justify-content: center;align-items: center;}
+        #player {max-width: 90vw;max-height: 90vh;width: auto;height: auto;border-radius: 6px;box-shadow: 0 0 50px rgba(0, 0, 0, 0.7);}
+        .close-btn { position: absolute; top: -45px; right: -10px; font-size: 2.5em; color: #fff; cursor: pointer; line-height: 1; user-select: none; }
     </style>
 </head>
 <body>
