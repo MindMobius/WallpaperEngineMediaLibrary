@@ -11,6 +11,7 @@
 
     <img src="screenshot/picture_1.png" height="200">
 *   文件夹名称是纯数字 ID，难以记忆，退出后就忘记上次看了哪个文件。
+
     <img src="screenshot/picture_2.png" height="200">
 *   壁纸存储在电脑上，但想在手机或平板上欣赏，配置远程访问又过于麻烦。
 
@@ -22,14 +23,19 @@ Wallpaper Engine Media Library (WEML) 帮你轻松解决这些问题！
     
     <img src="screenshot/picture_3.png" height="200">
 *   **便捷的媒体库**：手动选择 Wallpaper Engine 下载目录，即可进入 WEML。默认只显示安全内容。
+
     <img src="screenshot/picture_4.png" height="200">
 *   **超速模式**：开启后，你就能看到你精选的壁纸。
+
     <img src="screenshot/picture_5.png" height="200">
 *   **智能排序**：壁纸卡片按照日期、时间或名称排序，卡片上直接显示壁纸标题。
+
     <img src="screenshot/picture_6.png" height="200">
 *   **在线预览**：点击壁纸卡片，即可在浏览器中直接欣赏壁纸。
+
     <img src="screenshot/picture_7.png" height="200">
 *   **播放记录**：记录查看次数和上次播放进度，方便下次快速定位。
+
     <img src="screenshot/picture_8.png" height="200">
 *   **多端同步**：在同一局域网内，多设备通过浏览器访问，数据实时同步。
   
