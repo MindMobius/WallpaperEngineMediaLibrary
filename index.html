@@ -7,8 +7,8 @@
     <style>
         :root {
             --bg-color: #141414; --card-bg: #1f1f1f; --text-color: #e5e5e5;
-            --text-secondary-color: #8c8c8c; --hover-bg: #333; --accent-color: #e50914;
-            --dialog-bg: rgba(0, 0, 0, 0.85); --tag-bg: #4d4d4d; --tag-active-bg: var(--accent-color);
+            --text-secondary-color: #8c8c8c; --hover-bg: #333; --accent-color: #e50914; --drive-mode-color: #0632BD;
+            --dialog-bg: rgba(0, 0, 0, 0.85); --tag-bg: #4d4d4d; --tag-active-bg: var(--drive-mode-color);
             --status-bg: #222;
         }
         body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; }
@@ -16,20 +16,23 @@
 
         /* Welcome Screen Styles */
         #welcome-screen { text-align: center; padding-top: 10vh; }
-        #welcome-screen h1 { font-size: 3em; color: var(--accent-color); }
+        #welcome-screen h1 { font-size: 3em; color: var(--drive-mode-color); }
         #welcome-screen p { font-size: 1.2em; color: var(--text-secondary-color); }
         .drive-grid { display: flex; justify-content: center; flex-wrap: wrap; gap: 30px; margin-top: 50px; }
         .drive-card { background: var(--card-bg); border-radius: 8px; padding: 25px; width: 220px; cursor: pointer; transition: all 0.2s ease; border: 2px solid transparent; }
-        .drive-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); border-color: var(--accent-color); }
+        .drive-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); border-color: var(--drive-mode-color); }
         .drive-letter { font-size: 3.5em; font-weight: bold; }
         .drive-stats { text-align: left; margin-top: 15px; color: var(--text-secondary-color); font-size: 0.9em; }
         .progress-bar { background-color: #444; border-radius: 5px; height: 10px; margin-top: 5px; overflow: hidden; }
-        .progress-bar-inner { background-color: var(--accent-color); height: 100%; }
+        .progress-bar-inner { background-color: var(--drive-mode-color); height: 100%; }
 
         /* Main App Styles */
         .container { max-width: 1800px; margin: 0 auto; padding: 20px; }
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
-        .header h1 { font-size: 2em; margin: 0; color: var(--accent-color); }
+        .header h1 { font-size: 2em; margin: 0; color: var(--text-color); }
+        #speed-mode-btn {font-weight: bold;border-radius: 20px;padding: 8px 16px;border: none;cursor: pointer;transition: background-color 0.3s, color 0.3s;font-size: 1em;}
+        #speed-mode-btn.normal-speed {background-color: var(--drive-mode-color); color: white;}
+        #speed-mode-btn.over-speed {background-color: var(--accent-color); color: white;}
         .header-controls button, .controls select, .controls input { background: var(--card-bg); color: var(--text-color); border: 1px solid var(--hover-bg); padding: 8px 12px; border-radius: 4px; font-size: 1em; margin-left: 10px; vertical-align: middle; cursor: pointer; }
         .header-controls button:disabled { opacity: 0.5; cursor: not-allowed; }
         
@@ -40,7 +43,7 @@
 
         .tags-filter { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
         .tag { background-color: var(--tag-bg); padding: 5px 12px; border-radius: 15px; font-size: 0.9em; cursor: pointer; transition: background-color 0.2s; user-select: none; display: inline-block;}
-        .tag.active { background-color: var(--tag-active-bg); font-weight: bold; }
+        .tag.active { background-color: var(--drive-mode-color); font-weight: bold; }
         .group-container h2 { font-size: 1.5em; border-bottom: 2px solid var(--hover-bg); padding-bottom: 10px; margin-top: 40px; margin-bottom: 20px; }
         .wallpaper-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
         
@@ -52,7 +55,7 @@
         .card-tags .tag { font-size: 0.8em; padding: 3px 8px; cursor: default; }
         .card-play-count { position: absolute; bottom: 8px; right: 12px; font-size: 0.8em; color: var(--text-secondary-color); background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
         .card-progress-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background-color: rgba(255,255,255,0.1); }
-        .card-progress-bar-inner { height: 100%; background-color: var(--accent-color); }
+        .card-progress-bar-inner { height: 100%; background-color: var(--drive-mode-color); }
         
         .skeleton { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
         .skeleton .card { background-color: #2a2a2a; } .skeleton .card-title, .skeleton .card-tags { background-color: #444; border-radius: 4px; }
@@ -68,14 +71,18 @@
 
     <div id="welcome-screen">
         <h1>欢迎使用壁纸引擎媒体库</h1>
-        <p>要开始使用, 请选择您的 Steam 媒体库所在的盘符。</p>
+        <h2>Wallpaper Engine Media Library</h2>
+        <p>开始使用前, 请选择您的 Steam 安装的硬盘</p>
         <div class="drive-grid" id="drive-grid-container"></div>
     </div>
 
     <div id="main-app" class="hidden">
         <div class="container">
             <div class="header">
-                <h1>壁纸媒体库</h1>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <h1>壁纸引擎媒体库</h1>
+                    <button id="speed-mode-btn" class="normal-speed">匀速行驶</button>
+                </div>
                 <div class="header-controls">
                     <div class="controls" style="display: inline-block;">
                         <label>排序:</label>
@@ -124,6 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- GLOBAL STATE ---
     let allWallpapers = [], allTags = [], activeTag = '所有', autoRefreshInterval = null;
+    let speedMode = 'normal'; // vvv 新增状态: normal 或 overspeed vvv
 
     // --- API UTILITY ---
     const api = { 
@@ -279,18 +287,29 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function applyFiltersAndRender() {
         let filteredWallpapers = allWallpapers;
+
+        // vvv 简化的过滤逻辑 vvv
+        // 1. Filter by speed mode
+        // 后端已经帮我们分好类了，所以这里直接比较即可
+        filteredWallpapers = filteredWallpapers.filter(wp => wp.rating === speedMode);
+        // ^^^ 简化的过滤逻辑 ^^^
+
+        // 2. Filter by tag
         if (activeTag !== '所有') {
-            filteredWallpapers = allWallpapers.filter(wp => wp.tags.includes(activeTag));
+            filteredWallpapers = filteredWallpapers.filter(wp => wp.tags.includes(activeTag));
         }
+
+        // 3. Sort (保持不变)
         const sortBy = document.getElementById('sort-by').value;
         const isDesc = document.getElementById('sort-order').value === 'desc';
-        filteredWallpapers.sort((a, b) => { 
-            let valA = sortBy === 'title' ? a.title.toLowerCase() : a.mtime; 
-            let valB = sortBy === 'title' ? b.title.toLowerCase() : b.mtime; 
-            if (valA < valB) return isDesc ? 1 : -1; 
-            if (valA > valB) return isDesc ? -1 : 1; 
-            return 0; 
+        filteredWallpapers.sort((a, b) => {
+            let valA = sortBy === 'title' ? a.title.toLowerCase() : a.mtime;
+            let valB = sortBy === 'title' ? b.title.toLowerCase() : b.mtime;
+            if (valA < valB) return isDesc ? 1 : -1;
+            if (valA > valB) return isDesc ? -1 : 1;
+            return 0;
         });
+
         renderWallpapers(filteredWallpapers);
     }
     
@@ -333,6 +352,30 @@ document.addEventListener('DOMContentLoaded', () => {
         autoRefreshInterval = setInterval(() => handleRefresh(true), 5000);
     }
 
+    function handleSpeedModeChange() {
+        const speedBtn = document.getElementById('speed-mode-btn');
+        const root = document.documentElement; // 获取HTML根元素
+
+        if (speedMode === 'normal') {
+            if (confirm('请在安全环境下超速！\n\n您确定要进入超速模式吗？')) {
+                speedMode = 'overspeed';
+                speedBtn.textContent = '超速行驶';
+                speedBtn.className = 'over-speed';
+                // vvv 修改CSS变量为红色 vvv
+                root.style.setProperty('--drive-mode-color', 'var(--accent-color)');
+            } else {
+                return;
+            }
+        } else {
+            speedMode = 'normal';
+            speedBtn.textContent = '匀速行驶';
+            speedBtn.className = 'normal-speed';
+            // vvv 修改CSS变量为蓝色 vvv
+            root.style.setProperty('--drive-mode-color', '#0632BD');
+        }
+        applyFiltersAndRender();
+    }
+
     async function fetchMainData() {
         const data = await api.get('/api/data');
         allWallpapers = data.wallpapers;
@@ -358,6 +401,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function main() {
+        document.documentElement.style.setProperty('--drive-mode-color', '#0632BD');
         const config = await api.get('/api/config-status');
         if (config.configured) { await initializeMainApp(); }
         else { await initializeWelcomeScreen(); }
@@ -369,6 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshBtn.addEventListener('click', () => handleRefresh(false));
     contentArea.addEventListener('click', e => { const card = e.target.closest('.card'); if (card && card.dataset.id) { const wp = allWallpapers.find(w => w.id === card.dataset.id); if (wp) openPlayer(wp); } });
     document.getElementById('close-player-btn').addEventListener('click', closePlayer);
+    document.getElementById('speed-mode-btn').addEventListener('click', handleSpeedModeChange);
     playerDialog.addEventListener('click', e => { if (e.target === playerDialog) closePlayer(); });
     
     main();

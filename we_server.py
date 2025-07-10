@@ -17,6 +17,7 @@ APP_NAME = "壁纸引擎媒体库"
 APP_VERSION = "4.4" # Version bump for final features
 WE_WORKSHOP_ID = "431960"
 CONFIG_FILE = Path("config.json")
+OVERSPEED_RATINGS = ["adult", "mild"] 
 
 # --- FastAPI APP ---
 app = FastAPI(title=APP_NAME)
@@ -65,7 +66,7 @@ def record_visitor(request: Request):
         config.setdefault("visitors", []).append(client_ip)
         save_config()
 
-# --- CORE SCANNING LOGIC (Unchanged) ---
+# --- CORE SCANNING LOGIC (Updated for flexible rating) ---
 def scan_wallpapers(drive_letter: str):
     # ... (This function's internal logic is the same) ...
     global wallpapers_cache, all_tags, status_info; wallpapers_cache.clear(); all_tags.clear()
@@ -87,7 +88,14 @@ def scan_wallpapers(drive_letter: str):
                     video_path = item_dir / data["file"]
                     if video_path.exists():
                         tags = data.get("tags", []); all_tags.update(tags)
-                        wallpapers_cache.append({"id": item_dir.name, "title": data.get("title", "无标题"), "path": str(video_path.resolve()), "tags": tags, "mtime": video_path.stat().st_mtime, "date": datetime.fromtimestamp(video_path.stat().st_mtime).strftime("%Y-%m-%d")})
+                        
+                        # vvv 修改的逻辑 vvv
+                        raw_rating = data.get("ratingsex", "none")
+                        # 判断原始rating是否在我们的超速列表中
+                        rating_mode = "overspeed" if raw_rating in OVERSPEED_RATINGS else "normal"
+                        # ^^^ 修改的逻辑 ^^^
+                        
+                        wallpapers_cache.append({"id": item_dir.name, "title": data.get("title", "无标题"), "path": str(video_path.resolve()), "tags": tags, "rating": rating_mode, "mtime": video_path.stat().st_mtime, "date": datetime.fromtimestamp(video_path.stat().st_mtime).strftime("%Y-%m-%d")})
             except Exception: continue
     status_info["item_count"] = len(wallpapers_cache); status_info["last_refresh"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S"); print(f"扫描完成, 找到 {status_info['item_count']} 个壁纸。"); return True
 
