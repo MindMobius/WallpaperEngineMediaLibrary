@@ -1,4 +1,5 @@
 import os
+import sys # <-- Added
 import json
 import string
 import mimetypes
@@ -13,27 +14,47 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List
 
+# --- PYINSTALLER HELPER ---
+# This function helps find bundled assets (like index.html, public/)
+# when running as a frozen .exe file.
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        # Not running in a bundle, so use the script's directory
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
 # --- CONFIGURATION ---
 APP_NAME = "壁纸引擎媒体库"
-APP_VERSION = "4.4" # Version bump for final features
+APP_VERSION = "4.4"
 WE_WORKSHOP_ID = "431960"
+# NOTE: CONFIG_FILE is user data, so it should NOT use resource_path.
+# It will be created next to the .exe file.
 CONFIG_FILE = Path("config.json")
-OVERSPEED_RATINGS = ["adult", "mild"] 
+OVERSPEED_RATINGS = ["adult", "mild"]
 
 # --- FastAPI APP ---
 app = FastAPI(title=APP_NAME)
-app.mount("/public", StaticFiles(directory="public"), name="public")
+# vvv MODIFIED vvv Use resource_path for static assets
+app.mount("/public", StaticFiles(directory=resource_path("public")), name="public")
+# ^^^ MODIFIED ^^^
 
 # --- GLOBAL STATE ---
+# ... (rest of the global state is unchanged)
 wallpapers_cache = []
 all_tags = set()
-config = {"selected_drive": None, "history": {}, "visitors": []} # Default config structure
+config = {"selected_drive": None, "history": {}, "visitors": []}
 status_info = {
     "scan_path": "N/A", "local_address": "N/A", "lan_address": "N/A",
     "item_count": 0, "last_refresh": "从未"
 }
 
-# --- HELPER FUNCTIONS (Updated config handling) ---
+
+# --- HELPER FUNCTIONS (Unchanged) ---
 def format_bytes(byte_count):
     if byte_count is None: return "0 B"
     power = 1024; n = 0; power_labels = {0: '', 1: 'K', 2: 'M', 3: 'G', 4: 'T'}
@@ -42,7 +63,6 @@ def format_bytes(byte_count):
     return f"{byte_count:.1f} {power_labels[n]}B"
 
 def save_config():
-    # Sort visitors list before saving
     if "visitors" in config and isinstance(config["visitors"], list):
         config["visitors"] = sorted(list(set(config["visitors"])))
     with open(CONFIG_FILE, "w", encoding='utf-8') as f:
@@ -68,9 +88,8 @@ def record_visitor(request: Request):
         config.setdefault("visitors", []).append(client_ip)
         save_config()
 
-# --- CORE SCANNING LOGIC (Updated for flexible rating) ---
+# --- CORE SCANNING LOGIC (Unchanged) ---
 def scan_wallpapers(drive_letter: str):
-    # ... (This function's internal logic is the same) ...
     global wallpapers_cache, all_tags, status_info; wallpapers_cache.clear(); all_tags.clear()
     steamapps_patterns = ["SteamLibrary/steamapps", "Program Files (x86)/Steam/steamapps", "Steam/steamapps", "steamapps"]; base_path = None
     for pattern in steamapps_patterns:
@@ -90,20 +109,14 @@ def scan_wallpapers(drive_letter: str):
                     video_path = item_dir / data["file"]
                     if video_path.exists():
                         tags = data.get("tags", []); all_tags.update(tags)
-                        
-                        # vvv 修改的逻辑 vvv
                         raw_rating = data.get("ratingsex", "none")
-                        # 判断原始rating是否在我们的超速列表中
                         rating_mode = "overspeed" if raw_rating in OVERSPEED_RATINGS else "normal"
-                        # ^^^ 修改的逻辑 ^^^
-                        
                         wallpapers_cache.append({"id": item_dir.name, "title": data.get("title", "无标题"), "path": str(video_path.resolve()), "tags": tags, "rating": rating_mode, "mtime": video_path.stat().st_mtime, "date": datetime.fromtimestamp(video_path.stat().st_mtime).strftime("%Y-%m-%d")})
             except Exception: continue
     status_info["item_count"] = len(wallpapers_cache); status_info["last_refresh"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S"); print(f"扫描完成, 找到 {status_info['item_count']} 个壁纸。"); return True
 
 # --- VIDEO STREAMING (Unchanged) ---
 def stream_video(video_path: str, request: Request):
-    # ... (This function is exactly the same) ...
     file_size = os.path.getsize(video_path); range_header = request.headers.get("range"); headers = {"Content-Type": mimetypes.guess_type(video_path)[0] or "video/mp4","Accept-Ranges": "bytes","Content-Length": str(file_size),"Connection": "keep-alive",};
     if range_header:
         start, end = range_header.replace("bytes=", "").split("-"); start = int(start); end = int(end) if end else file_size - 1;
@@ -125,8 +138,11 @@ def stream_video(video_path: str, request: Request):
 @app.get("/", response_class=FileResponse)
 def get_main_page(request: Request):
     record_visitor(request)
-    return FileResponse("index.html")
+    # vvv MODIFIED vvv Use resource_path for the main page
+    return FileResponse(resource_path("index.html"))
+    # ^^^ MODIFIED ^^^
 
+# ... (All other API endpoints are unchanged)
 @app.get("/api/status")
 def get_status():
     status_info["visitors"] = config.get("visitors", [])
@@ -146,7 +162,6 @@ def get_config_status(): return {"configured": config.get("selected_drive") is n
 
 @app.get("/api/drives")
 def get_drives():
-    # ... (Unchanged)
     drives = [];
     for partition in psutil.disk_partitions(all=False):
         if 'cdrom' in partition.opts or partition.fstype == '': continue
@@ -171,11 +186,8 @@ def select_drive(selection: DriveSelection, request: Request):
 @app.post("/api/reset-config")
 def reset_config():
     global config, wallpapers_cache, all_tags
-    # 只重置选中的盘符，保留其他数据
     config["selected_drive"] = None
-    save_config() # 保存更改到 config.json 文件
-    
-    # 清空内存中的壁纸缓存
+    save_config()
     wallpapers_cache.clear()
     all_tags.clear()
     return {"status": "success"}
@@ -232,8 +244,10 @@ def main():
     print(f"  - 本机访问: {status_info['local_address']}")
     if args.host == '0.0.0.0': print(f"  - 局域网访问: {status_info['lan_address']}")
     print("按 Ctrl+C 关闭服务器。")
+    print("如果是通过 EXE 运行，请直接关闭此命令行窗口来停止服务。") # Added for clarity
 
     import uvicorn
+    # When running bundled, sys.argv might be different. We'll use our parsed args.
     uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 
 if __name__ == "__main__":

@@ -42,8 +42,14 @@ Wallpaper Engine Media Library (WEML) 帮你轻松解决这些问题！
     <img src="screenshot/picture_9.png" height="200">
 
 >   **提示**：如果无法访问，请检查电脑防火墙是否关闭，或端口 9888 是否开放。
+## 使用
 
-## 运行
+### 直接下载
+
+已打包好的exe文件，下载后双击直接运行即可：[WEML v1.0.0](https://github.com/MindMobius/WallpaperEngineMediaLibrary/releases/download/v1.0.0/WEML.exe)
+
+### 编译开发
+在Python环境开发
 
 1.  **安装依赖**
 
@@ -51,11 +57,11 @@ Wallpaper Engine Media Library (WEML) 帮你轻松解决这些问题！
     pip install -r requirements.txt
     ```
 
-    这会自动安装所有必需的库。
+    安装项目所需的所有依赖库。
 
 2.  **运行服务器**
 
-    *   **默认运行:**
+    *   **默认端口:**
 
         ```bash
         python we_server.py
@@ -67,7 +73,13 @@ Wallpaper Engine Media Library (WEML) 帮你轻松解决这些问题！
         python we_server.py --port 8080
         ```
 
-        服务器将在 `http://127.0.0.1:8080` 上运行。
+        服务器将在 `http://127.0.0.1:8080` 启动。
+
+3.  **编译打包exe**
+
+    ```bash
+    pyinstaller WEML.spec
+    ```
 
 ## 期待你的反馈
 
