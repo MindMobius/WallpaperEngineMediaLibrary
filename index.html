@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WallpaperEngineLibrary</title>
+    <style>
+        :root {
+            --bg-color: #141414; --card-bg: #1f1f1f; --text-color: #e5e5e5;
+            --text-secondary-color: #8c8c8c; --hover-bg: #333; --accent-color: #e50914;
+            --dialog-bg: rgba(0, 0, 0, 0.85); --tag-bg: #4d4d4d; --tag-active-bg: var(--accent-color);
+        }
+        body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; }
+        .hidden { display: none !important; }
+
+        /* Welcome Screen Styles */
+        #welcome-screen { text-align: center; padding-top: 10vh; }
+        #welcome-screen h1 { font-size: 3em; color: var(--accent-color); }
+        #welcome-screen p { font-size: 1.2em; color: var(--text-secondary-color); }
+        .drive-grid { display: flex; justify-content: center; flex-wrap: wrap; gap: 30px; margin-top: 50px; }
+        .drive-card { background: var(--card-bg); border-radius: 8px; padding: 25px; width: 220px; cursor: pointer; transition: all 0.2s ease; border: 2px solid transparent; }
+        .drive-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.5); border-color: var(--accent-color); }
+        .drive-letter { font-size: 3.5em; font-weight: bold; }
+        .drive-stats { text-align: left; margin-top: 15px; color: var(--text-secondary-color); font-size: 0.9em; }
+        .progress-bar { background-color: #444; border-radius: 5px; height: 10px; margin-top: 5px; overflow: hidden; }
+        .progress-bar-inner { background-color: var(--accent-color); height: 100%; }
+
+        /* Main App Styles */
+        .container { max-width: 1800px; margin: 0 auto; padding: 20px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+        .header h1 { font-size: 2em; margin: 0; color: var(--accent-color); }
+        .header-controls button, .controls select, .controls input { background: var(--card-bg); color: var(--text-color); border: 1px solid var(--hover-bg); padding: 8px 12px; border-radius: 4px; font-size: 1em; margin-left: 10px; vertical-align: middle; cursor: pointer; }
+        .tags-filter { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
+        .tag { background-color: var(--tag-bg); padding: 5px 12px; border-radius: 15px; font-size: 0.9em; cursor: pointer; transition: background-color 0.2s; user-select: none; }
+        .tag.active { background-color: var(--tag-active-bg); font-weight: bold; }
+        .group-container h2 { font-size: 1.5em; border-bottom: 2px solid var(--hover-bg); padding-bottom: 10px; margin-top: 40px; margin-bottom: 20px; }
+        .wallpaper-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .card { background-color: var(--card-bg); border-radius: 6px; overflow: hidden; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; display: flex; flex-direction: column; height: 160px; }
+        .card:hover { transform: scale(1.03); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
+        .card-content { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .card-title { font-weight: bold; text-align: center; margin-bottom: 10px; font-size: 1.1em; }
+        .card-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+        .card-tags .tag { font-size: 0.8em; padding: 3px 8px; cursor: default; }
+        
+        /* Skeleton Loader */
+        .skeleton { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .skeleton .card { background-color: #2a2a2a; }
+        .skeleton .card-title { height: 20px; width: 70%; background-color: #444; border-radius: 4px; margin-bottom: 15px; }
+        .skeleton .card-tags { height: 15px; width: 50%; background-color: #444; border-radius: 4px; }
+        
+        /* Dialog */
+        .dialog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dialog-bg); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease; }
+        .dialog-overlay.visible { opacity: 1; visibility: visible; }
+        .dialog-content { position: relative; width: 80%; max-width: 1280px; max-height: 80%; }
+        #player { width: 100%; height: 100%; border-radius: 6px; }
+        .close-btn { position: absolute; top: -45px; right: -10px; font-size: 2.5em; color: #fff; cursor: pointer; line-height: 1; user-select: none; }
+    </style>
+</head>
+<body>
+
+    <!-- Welcome Screen -->
+    <div id="welcome-screen">
+        <h1>欢迎使用 Wallpaper Engine Library</h1>
+        <p>请选择您的 Steam 库所在的硬盘</p>
+        <div class="drive-grid" id="drive-grid-container">
+            <!-- Drive cards will be inserted here by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div id="main-app" class="hidden">
+        <div class="container">
+            <div class="header">
+                <h1>Wallpaper Engine Library</h1>
+                <div class="header-controls">
+                    <div class="controls" style="display: inline-block;">
+                        <label>排序:</label>
+                        <select id="sort-by"><option value="date">时间</option><option value="title">名称</option></select>
+                        <select id="sort-order"><option value="desc">倒序</option><option value="asc">正序</option></select>
+                        <label>分组:</label>
+                        <input type="checkbox" id="group-by-date" checked>
+                    </div>
+                    <button id="change-drive-btn">更换硬盘</button>
+                </div>
+            </div>
+            <div class="tags-filter" id="tags-filter-container"></div>
+            <div id="content-area"></div>
+        </div>
+    </div>
+
+    <!-- Video Player Dialog -->
+    <div class="dialog-overlay" id="player-dialog">
+        <div class="dialog-content">
+            <span class="close-btn" id="close-player-btn">×</span>
+            <video id="player" controls autoplay loop playsinline></video>
+        </div>
+    </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const welcomeScreen = document.getElementById('welcome-screen');
+    const mainApp = document.getElementById('main-app');
+    const driveGridContainer = document.getElementById('drive-grid-container');
+    const contentArea = document.getElementById('content-area');
+    const tagsFilterContainer = document.getElementById('tags-filter-container');
+    const playerDialog = document.getElementById('player-dialog');
+    const videoElement = document.getElementById('player');
+    
+    let allWallpapers = [];
+    let allTags = [];
+    let activeTag = 'All';
+
+    // --- UTILITY FUNCTIONS ---
+    const api = {
+        get: async (url) => (await fetch(url)).json(),
+        post: async (url, data) => (await fetch(url, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(data)
+        })).json()
+    };
+    
+    // --- RENDER FUNCTIONS ---
+    function renderDrives(drives) {
+        driveGridContainer.innerHTML = '';
+        drives.forEach(drive => {
+            const card = document.createElement('div');
+            card.className = 'drive-card';
+            card.onclick = () => selectDrive(drive.letter);
+            card.innerHTML = `
+                <div class="drive-letter">${drive.letter}</div>
+                <div class="drive-stats">
+                    <div>Total: ${drive.total}</div>
+                    <div>Used: ${drive.used}</div>
+                    <div>Free: ${drive.free}</div>
+                    <div class="progress-bar">
+                        <div class="progress-bar-inner" style="width: ${drive.percent}%;"></div>
+                    </div>
+                </div>
+            `;
+            driveGridContainer.appendChild(card);
+        });
+    }
+
+    function renderSkeleton() {
+        welcomeScreen.classList.add('hidden');
+        mainApp.classList.remove('hidden');
+        contentArea.innerHTML = '';
+        const grid = document.createElement('div');
+        grid.className = 'wallpaper-grid skeleton';
+        for (let i = 0; i < 12; i++) {
+            grid.innerHTML += `
+                <div class="card">
+                    <div class="card-content">
+                        <div class="card-title"></div>
+                        <div class="card-tags"></div>
+                    </div>
+                </div>`;
+        }
+        contentArea.appendChild(grid);
+    }
+
+    function renderTagsFilter() {
+        tagsFilterContainer.innerHTML = '';
+        const tags = ['All', ...allTags];
+        tags.forEach(tag => {
+            const tagEl = document.createElement('div');
+            tagEl.className = 'tag';
+            tagEl.textContent = tag;
+            if (tag === activeTag) tagEl.classList.add('active');
+            tagEl.onclick = () => {
+                activeTag = tag;
+                document.querySelectorAll('.tags-filter .tag').forEach(t => t.classList.remove('active'));
+                tagEl.classList.add('active');
+                applyFiltersAndRender();
+            };
+            tagsFilterContainer.appendChild(tagEl);
+        });
+    }
+
+    function createCard(wp) {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.onclick = () => openPlayer(wp.id);
+        const tagsHtml = wp.tags.slice(0, 3).map(tag => `<span class="tag">${tag}</span>`).join('');
+        card.innerHTML = `
+            <div class="card-content">
+                <div class="card-title">${wp.title}</div>
+                <div class="card-tags">${tagsHtml}</div>
+            </div>`;
+        return card;
+    }
+
+    function renderWallpapers(wallpapersToRender) {
+        contentArea.innerHTML = '';
+        if(wallpapersToRender.length === 0){
+            contentArea.innerHTML = '<div style="text-align:center;font-size:1.2em;">没有匹配的壁纸。</div>';
+            return;
+        }
+        const groupByDate = document.getElementById('group-by-date').checked && document.getElementById('sort-by').value === 'date';
+        if (groupByDate) {
+            const groups = wallpapersToRender.reduce((acc, wp) => {
+                (acc[wp.date] = acc[wp.date] || []).push(wp);
+                return acc;
+            }, {});
+            for (const date in groups) {
+                const groupContainer = document.createElement('div');
+                groupContainer.innerHTML = `<h2>${date}</h2>`;
+                const grid = document.createElement('div');
+                grid.className = 'wallpaper-grid';
+                groups[date].forEach(wp => grid.appendChild(createCard(wp)));
+                groupContainer.appendChild(grid);
+                contentArea.appendChild(groupContainer);
+            }
+        } else {
+            const grid = document.createElement('div');
+            grid.className = 'wallpaper-grid';
+            wallpapersToRender.forEach(wp => grid.appendChild(createCard(wp)));
+            contentArea.appendChild(grid);
+        }
+    }
+
+    // --- LOGIC & EVENT HANDLERS ---
+    async function selectDrive(driveLetter) {
+        renderSkeleton();
+        const response = await api.post('/api/select-drive', { drive: driveLetter });
+        if (response.status === 'success') {
+            await initializeMainApp();
+        } else {
+            alert(`Error selecting drive: ${response.message}`);
+            location.reload();
+        }
+    }
+    
+    function applyFiltersAndRender() {
+        let filteredWallpapers = allWallpapers;
+        if (activeTag !== 'All') {
+            filteredWallpapers = allWallpapers.filter(wp => wp.tags.includes(activeTag));
+        }
+        const sortBy = document.getElementById('sort-by').value;
+        const isDesc = document.getElementById('sort-order').value === 'desc';
+        filteredWallpapers.sort((a, b) => {
+            let valA = sortBy === 'title' ? a.title.toLowerCase() : a.mtime;
+            let valB = sortBy === 'title' ? b.title.toLowerCase() : b.mtime;
+            if (valA < valB) return isDesc ? 1 : -1;
+            if (valA > valB) return isDesc ? -1 : 1;
+            return 0;
+        });
+        renderWallpapers(filteredWallpapers);
+    }
+    
+    function openPlayer(id) {
+        videoElement.src = `/api/video/${id}`;
+        playerDialog.classList.add('visible');
+        videoElement.play().catch(e => console.error("Playback failed:", e));
+    }
+
+    function closePlayer() {
+        playerDialog.classList.remove('visible');
+        videoElement.pause();
+        videoElement.src = '';
+    }
+
+    async function initializeMainApp() {
+        const data = await api.get('/api/data');
+        allWallpapers = data.wallpapers;
+        allTags = data.tags;
+        welcomeScreen.classList.add('hidden');
+        mainApp.classList.remove('hidden');
+        renderTagsFilter();
+        applyFiltersAndRender();
+    }
+    
+    async function initializeWelcomeScreen() {
+        const drives = await api.get('/api/drives');
+        mainApp.classList.add('hidden');
+        welcomeScreen.classList.remove('hidden');
+        renderDrives(drives);
+    }
+
+    // --- INITIALIZATION ---
+    async function main() {
+        const config = await api.get('/api/config-status');
+        if (config.configured) {
+            await initializeMainApp();
+        } else {
+            await initializeWelcomeScreen();
+        }
+    }
+
+    // Bind event listeners that are always present
+    document.querySelectorAll('#sort-by, #sort-order, #group-by-date').forEach(el => el.addEventListener('change', applyFiltersAndRender));
+    document.getElementById('change-drive-btn').addEventListener('click', async () => {
+        if (confirm('确定要更换盘符吗？这将清除当前选择。')) {
+            await api.post('/api/reset-config');
+            location.reload();
+        }
+    });
+    contentArea.addEventListener('click', e => {
+        const card = e.target.closest('.card');
+        if (card && card.dataset.id) openPlayer(card.dataset.id);
+    });
+    document.getElementById('close-player-btn').addEventListener('click', closePlayer);
+    playerDialog.addEventListener('click', e => { if (e.target === playerDialog) closePlayer(); });
+    
+    main();
+});
+</script>
+</body>
+</html>
