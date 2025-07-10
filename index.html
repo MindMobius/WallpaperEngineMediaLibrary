@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>壁纸引擎媒体库</title>
+    <link rel="icon" type="image/png" href="/public/icon-192.png">
     <style>
         :root {
             --bg-color: #141414; --card-bg: #1f1f1f; --text-color: #e5e5e5;
@@ -70,6 +71,7 @@
 <body>
 
     <div id="welcome-screen">
+        <img src="/public/icon-192-maskable.png" alt="壁纸引擎媒体库" style="height: 100px;">
         <h1>欢迎使用壁纸引擎媒体库</h1>
         <h2>Wallpaper Engine Media Library</h2>
         <p>开始使用前, 请选择您的 Steam 安装的硬盘</p>
@@ -80,7 +82,10 @@
         <div class="container">
             <div class="header">
                 <div style="display: flex; align-items: center; gap: 20px;">
-                    <h1>壁纸引擎媒体库</h1>
+                    <h1>
+                        <img src="/public/icon-192-maskable.png" alt="logo" style="height: 1.2em; vertical-align: -0.2em; margin-right: 10px;">
+                        壁纸媒体库
+                    </h1>
                     <button id="speed-mode-btn" class="normal-speed">匀速行驶</button>
                 </div>
                 <div class="header-controls">
@@ -91,7 +96,9 @@
                         <label>分组:</label>
                         <input type="checkbox" id="group-by-date" checked>
                     </div>
-                    <button id="refresh-btn">刷新</button>
+                    <button id="refresh-btn">
+                        <i class="fas fa-sync"></i> 刷新
+                    </button>
                     <button id="change-drive-btn">更换盘符</button>
                 </div>
             </div>

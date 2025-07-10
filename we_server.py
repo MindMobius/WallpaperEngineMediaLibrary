@@ -9,6 +9,7 @@ from pathlib import Path
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import Optional, List
 
@@ -21,6 +22,7 @@ OVERSPEED_RATINGS = ["adult", "mild"]
 
 # --- FastAPI APP ---
 app = FastAPI(title=APP_NAME)
+app.mount("/public", StaticFiles(directory="public"), name="public")
 
 # --- GLOBAL STATE ---
 wallpapers_cache = []
