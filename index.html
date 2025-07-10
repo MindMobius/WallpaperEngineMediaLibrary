@@ -3,12 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WallpaperEngineLibrary</title>
+    <title>壁纸引擎媒体库</title>
     <style>
         :root {
             --bg-color: #141414; --card-bg: #1f1f1f; --text-color: #e5e5e5;
             --text-secondary-color: #8c8c8c; --hover-bg: #333; --accent-color: #e50914;
             --dialog-bg: rgba(0, 0, 0, 0.85); --tag-bg: #4d4d4d; --tag-active-bg: var(--accent-color);
+            --status-bg: #222;
         }
         body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; }
         .hidden { display: none !important; }
@@ -30,49 +31,49 @@
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
         .header h1 { font-size: 2em; margin: 0; color: var(--accent-color); }
         .header-controls button, .controls select, .controls input { background: var(--card-bg); color: var(--text-color); border: 1px solid var(--hover-bg); padding: 8px 12px; border-radius: 4px; font-size: 1em; margin-left: 10px; vertical-align: middle; cursor: pointer; }
+        .header-controls button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .status-panel { background-color: var(--status-bg); border-radius: 8px; padding: 15px 20px; margin-bottom: 20px; font-size: 0.9em; color: var(--text-secondary-color); display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px 20px; }
+        .status-panel span { color: var(--text-color); }
+        .status-path, .status-visitors { grid-column: 1 / -1; word-break: break-all; } /* Span full width */
+        .status-visitors .tag { margin-right: 8px; vertical-align: middle; }
+
         .tags-filter { margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 8px; }
-        .tag { background-color: var(--tag-bg); padding: 5px 12px; border-radius: 15px; font-size: 0.9em; cursor: pointer; transition: background-color 0.2s; user-select: none; }
+        .tag { background-color: var(--tag-bg); padding: 5px 12px; border-radius: 15px; font-size: 0.9em; cursor: pointer; transition: background-color 0.2s; user-select: none; display: inline-block;}
         .tag.active { background-color: var(--tag-active-bg); font-weight: bold; }
         .group-container h2 { font-size: 1.5em; border-bottom: 2px solid var(--hover-bg); padding-bottom: 10px; margin-top: 40px; margin-bottom: 20px; }
         .wallpaper-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .card { background-color: var(--card-bg); border-radius: 6px; overflow: hidden; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; display: flex; flex-direction: column; height: 160px; }
+        
+        .card { background-color: var(--card-bg); border-radius: 6px; overflow: hidden; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; display: flex; flex-direction: column; height: 160px; position: relative; }
         .card:hover { transform: scale(1.03); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
         .card-content { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .card-title { font-weight: bold; text-align: center; margin-bottom: 10px; font-size: 1.1em; }
         .card-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
         .card-tags .tag { font-size: 0.8em; padding: 3px 8px; cursor: default; }
+        .card-play-count { position: absolute; bottom: 8px; right: 12px; font-size: 0.8em; color: var(--text-secondary-color); background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
+        .card-progress-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background-color: rgba(255,255,255,0.1); }
+        .card-progress-bar-inner { height: 100%; background-color: var(--accent-color); }
         
-        /* Skeleton Loader */
-        .skeleton { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
-        .skeleton .card { background-color: #2a2a2a; }
-        .skeleton .card-title { height: 20px; width: 70%; background-color: #444; border-radius: 4px; margin-bottom: 15px; }
-        .skeleton .card-tags { height: 15px; width: 50%; background-color: #444; border-radius: 4px; }
-        
-        /* Dialog */
+        .skeleton { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+        .skeleton .card { background-color: #2a2a2a; } .skeleton .card-title, .skeleton .card-tags { background-color: #444; border-radius: 4px; }
+        .skeleton .card-title { height: 20px; width: 70%; margin-bottom: 15px; } .skeleton .card-tags { height: 15px; width: 50%; }
         .dialog-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dialog-bg); display: flex; justify-content: center; align-items: center; z-index: 1000; opacity: 0; visibility: hidden; transition: opacity 0.3s ease; }
-        .dialog-overlay.visible { opacity: 1; visibility: visible; }
-        .dialog-content { position: relative; width: 80%; max-width: 1280px; max-height: 80%; }
-        #player { width: 100%; height: 100%; border-radius: 6px; }
-        .close-btn { position: absolute; top: -45px; right: -10px; font-size: 2.5em; color: #fff; cursor: pointer; line-height: 1; user-select: none; }
+        .dialog-overlay.visible { opacity: 1; visibility: visible; } .dialog-content { position: relative; width: 80%; max-width: 1280px; max-height: 80%; }
+        #player { width: 100%; height: 100%; border-radius: 6px; } .close-btn { position: absolute; top: -45px; right: -10px; font-size: 2.5em; color: #fff; cursor: pointer; line-height: 1; user-select: none; }
     </style>
 </head>
 <body>
 
-    <!-- Welcome Screen -->
     <div id="welcome-screen">
-        <h1>欢迎使用 Wallpaper Engine Library</h1>
-        <p>请选择您的 Steam 库所在的硬盘</p>
-        <div class="drive-grid" id="drive-grid-container">
-            <!-- Drive cards will be inserted here by JavaScript -->
-        </div>
+        <h1>欢迎使用壁纸引擎媒体库</h1>
+        <p>要开始使用, 请选择您的 Steam 媒体库所在的盘符。</p>
+        <div class="drive-grid" id="drive-grid-container"></div>
     </div>
 
-    <!-- Main Application -->
     <div id="main-app" class="hidden">
         <div class="container">
             <div class="header">
-                <h1>Wallpaper Engine Library</h1>
+                <h1>壁纸媒体库</h1>
                 <div class="header-controls">
                     <div class="controls" style="display: inline-block;">
                         <label>排序:</label>
@@ -81,15 +82,25 @@
                         <label>分组:</label>
                         <input type="checkbox" id="group-by-date" checked>
                     </div>
-                    <button id="change-drive-btn">更换硬盘</button>
+                    <button id="refresh-btn">刷新</button>
+                    <button id="change-drive-btn">更换盘符</button>
                 </div>
             </div>
+            
+            <div class="status-panel">
+                <div class="status-path">扫描路径: <span id="status-path">...</span></div>
+                <div>本机地址: <span id="status-local-url">...</span></div>
+                <div>局域网地址: <span id="status-lan-url">...</span></div>
+                <div>项目数量: <span id="status-count">...</span></div>
+                <div>最后刷新: <span id="status-time">...</span></div>
+                <div class="status-visitors">访客IP: <span id="status-visitors">...</span></div>
+            </div>
+
             <div class="tags-filter" id="tags-filter-container"></div>
             <div id="content-area"></div>
         </div>
     </div>
 
-    <!-- Video Player Dialog -->
     <div class="dialog-overlay" id="player-dialog">
         <div class="dialog-content">
             <span class="close-btn" id="close-player-btn">×</span>
@@ -99,6 +110,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+    // --- ELEMENT SELECTORS ---
     const welcomeScreen = document.getElementById('welcome-screen');
     const mainApp = document.getElementById('main-app');
     const driveGridContainer = document.getElementById('drive-grid-container');
@@ -106,22 +118,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const tagsFilterContainer = document.getElementById('tags-filter-container');
     const playerDialog = document.getElementById('player-dialog');
     const videoElement = document.getElementById('player');
+    const refreshBtn = document.getElementById('refresh-btn');
     
-    let allWallpapers = [];
-    let allTags = [];
-    let activeTag = 'All';
+    // --- GLOBAL STATE ---
+    let allWallpapers = [], allTags = [], activeTag = '所有', autoRefreshInterval = null;
 
-    // --- UTILITY FUNCTIONS ---
-    const api = {
-        get: async (url) => (await fetch(url)).json(),
-        post: async (url, data) => (await fetch(url, {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(data)
-        })).json()
+    // --- API UTILITY ---
+    const api = { 
+        get: async (url) => (await fetch(url)).json(), 
+        post: async (url, data = {}) => (await fetch(url, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) })).json() 
     };
     
-    // --- RENDER FUNCTIONS ---
+    // --- RENDER FUNCTIONS (Corrected and complete) ---
     function renderDrives(drives) {
         driveGridContainer.innerHTML = '';
         drives.forEach(drive => {
@@ -131,9 +139,9 @@ document.addEventListener('DOMContentLoaded', () => {
             card.innerHTML = `
                 <div class="drive-letter">${drive.letter}</div>
                 <div class="drive-stats">
-                    <div>Total: ${drive.total}</div>
-                    <div>Used: ${drive.used}</div>
-                    <div>Free: ${drive.free}</div>
+                    <div>总空间: ${drive.total}</div>
+                    <div>已使用: ${drive.used}</div>
+                    <div>剩余: ${drive.free}</div>
                     <div class="progress-bar">
                         <div class="progress-bar-inner" style="width: ${drive.percent}%;"></div>
                     </div>
@@ -160,41 +168,42 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         contentArea.appendChild(grid);
     }
-
+    
     function renderTagsFilter() {
         tagsFilterContainer.innerHTML = '';
-        const tags = ['All', ...allTags];
+        const tags = ['所有', ...allTags];
         tags.forEach(tag => {
             const tagEl = document.createElement('div');
             tagEl.className = 'tag';
             tagEl.textContent = tag;
             if (tag === activeTag) tagEl.classList.add('active');
-            tagEl.onclick = () => {
-                activeTag = tag;
-                document.querySelectorAll('.tags-filter .tag').forEach(t => t.classList.remove('active'));
-                tagEl.classList.add('active');
-                applyFiltersAndRender();
+            tagEl.onclick = () => { 
+                activeTag = tag; 
+                document.querySelectorAll('.tags-filter .tag').forEach(el => el.classList.remove('active')); 
+                tagEl.classList.add('active'); 
+                applyFiltersAndRender(); 
             };
             tagsFilterContainer.appendChild(tagEl);
         });
     }
-
+    
     function createCard(wp) {
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.onclick = () => openPlayer(wp.id);
-        const tagsHtml = wp.tags.slice(0, 3).map(tag => `<span class="tag">${tag}</span>`).join('');
-        card.innerHTML = `
-            <div class="card-content">
-                <div class="card-title">${wp.title}</div>
-                <div class="card-tags">${tagsHtml}</div>
-            </div>`;
-        return card;
-    }
-
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.id = wp.id; // 只保留 data-id，事件由父容器统一处理
+    // card.onclick = ... 这一行已被彻底删除
+    
+    const tagsHtml = wp.tags.slice(0, 3).map(tag => `<span class="tag">${tag}</span>`).join('');
+    const playCountHtml = wp.playCount > 0 ? `<div class="card-play-count">次数: ${wp.playCount}</div>` : '';
+    const progressBarHtml = wp.progress > 0.01 ? `<div class="card-progress-bar"><div class="card-progress-bar-inner" style="width: ${wp.progress * 100}%;"></div></div>` : '';
+    
+    card.innerHTML = `<div class="card-content"><div class="card-title">${wp.title}</div><div class="card-tags">${tagsHtml}</div></div>${playCountHtml}${progressBarHtml}`;
+    return card;
+}
+    
     function renderWallpapers(wallpapersToRender) {
         contentArea.innerHTML = '';
-        if(wallpapersToRender.length === 0){
+        if (wallpapersToRender.length === 0) {
             contentArea.innerHTML = '<div style="text-align:center;font-size:1.2em;">没有匹配的壁纸。</div>';
             return;
         }
@@ -220,56 +229,123 @@ document.addEventListener('DOMContentLoaded', () => {
             contentArea.appendChild(grid);
         }
     }
-
+    
     // --- LOGIC & EVENT HANDLERS ---
+    async function updateStatusPanel() {
+        const status = await api.get('/api/status');
+        document.getElementById('status-path').textContent = status.scan_path;
+        document.getElementById('status-local-url').textContent = status.local_address;
+        document.getElementById('status-lan-url').textContent = status.lan_address;
+        document.getElementById('status-count').textContent = status.item_count;
+        document.getElementById('status-time').textContent = status.last_refresh;
+        const visitorsContainer = document.getElementById('status-visitors');
+        visitorsContainer.innerHTML = ''; // Clear previous
+        (status.visitors || []).forEach(ip => {
+            const tag = document.createElement('span');
+            tag.className = 'tag';
+            tag.textContent = ip;
+            visitorsContainer.appendChild(tag);
+        });
+    }
+
+    async function handleRefresh(isAuto = false) {
+        if (!isAuto) {
+            refreshBtn.disabled = true;
+            refreshBtn.textContent = '刷新中...';
+        }
+        try {
+            const response = await api.post('/api/refresh');
+            if (response.status !== 'success') throw new Error(response.message);
+            await initializeMainApp(false);
+        } catch (error) {
+            if (!isAuto) alert(`刷新失败: ${error.message}`);
+            else console.error("Auto-refresh failed:", error.message);
+        } finally {
+            if (!isAuto) {
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = '刷新';
+            }
+        }
+    }
+    
     async function selectDrive(driveLetter) {
         renderSkeleton();
         const response = await api.post('/api/select-drive', { drive: driveLetter });
-        if (response.status === 'success') {
-            await initializeMainApp();
-        } else {
-            alert(`Error selecting drive: ${response.message}`);
-            location.reload();
-        }
+        if (response.status === 'success') { await initializeMainApp(); }
+        else { alert(`选择盘符时出错: ${response.message}`); location.reload(); }
     }
     
     function applyFiltersAndRender() {
         let filteredWallpapers = allWallpapers;
-        if (activeTag !== 'All') {
+        if (activeTag !== '所有') {
             filteredWallpapers = allWallpapers.filter(wp => wp.tags.includes(activeTag));
         }
         const sortBy = document.getElementById('sort-by').value;
         const isDesc = document.getElementById('sort-order').value === 'desc';
-        filteredWallpapers.sort((a, b) => {
-            let valA = sortBy === 'title' ? a.title.toLowerCase() : a.mtime;
-            let valB = sortBy === 'title' ? b.title.toLowerCase() : b.mtime;
-            if (valA < valB) return isDesc ? 1 : -1;
-            if (valA > valB) return isDesc ? -1 : 1;
-            return 0;
+        filteredWallpapers.sort((a, b) => { 
+            let valA = sortBy === 'title' ? a.title.toLowerCase() : a.mtime; 
+            let valB = sortBy === 'title' ? b.title.toLowerCase() : b.mtime; 
+            if (valA < valB) return isDesc ? 1 : -1; 
+            if (valA > valB) return isDesc ? -1 : 1; 
+            return 0; 
         });
         renderWallpapers(filteredWallpapers);
     }
     
-    function openPlayer(id) {
-        videoElement.src = `/api/video/${id}`;
+    function openPlayer(wp) {
+        playerDialog.dataset.videoId = wp.id;
+        api.post('/api/update-history', { id: wp.id, incrementPlayCount: true });
+        videoElement.src = `/api/video/${wp.id}`;
         playerDialog.classList.add('visible');
-        videoElement.play().catch(e => console.error("Playback failed:", e));
+        videoElement.play().catch(e => console.error("播放失败:", e));
+        
+        wp.playCount += 1;
+        const cardInDom = document.querySelector(`.card[data-id="${wp.id}"]`);
+        if (cardInDom) {
+            let countEl = cardInDom.querySelector('.card-play-count');
+            if (!countEl) {
+                countEl = document.createElement('div');
+                countEl.className = 'card-play-count';
+                cardInDom.appendChild(countEl);
+            }
+            countEl.textContent = `次数: ${wp.playCount}`;
+        }
     }
 
     function closePlayer() {
+        const id = playerDialog.dataset.videoId;
+        if (!id) return;
+        const progress = videoElement.duration ? videoElement.currentTime / videoElement.duration : 0;
+        if (progress > 0.01) { api.post('/api/update-history', { id: id, progress: progress }); }
+        
         playerDialog.classList.remove('visible');
         videoElement.pause();
         videoElement.src = '';
+        playerDialog.dataset.videoId = '';
+        
+        handleRefresh(true);
     }
 
-    async function initializeMainApp() {
+    function startAutoRefresh() {
+        if (autoRefreshInterval) clearInterval(autoRefreshInterval);
+        autoRefreshInterval = setInterval(() => handleRefresh(true), 5000);
+    }
+
+    async function fetchMainData() {
         const data = await api.get('/api/data');
         allWallpapers = data.wallpapers;
         allTags = data.tags;
-        welcomeScreen.classList.add('hidden');
-        mainApp.classList.remove('hidden');
         renderTagsFilter();
         applyFiltersAndRender();
+    }
+
+    async function initializeMainApp(showSkeleton = true) {
+        if (showSkeleton) {
+            welcomeScreen.classList.add('hidden');
+            mainApp.classList.remove('hidden');
+        }
+        await Promise.all([fetchMainData(), updateStatusPanel()]);
+        startAutoRefresh();
     }
     
     async function initializeWelcomeScreen() {
@@ -279,28 +355,17 @@ document.addEventListener('DOMContentLoaded', () => {
         renderDrives(drives);
     }
 
-    // --- INITIALIZATION ---
     async function main() {
         const config = await api.get('/api/config-status');
-        if (config.configured) {
-            await initializeMainApp();
-        } else {
-            await initializeWelcomeScreen();
-        }
+        if (config.configured) { await initializeMainApp(); }
+        else { await initializeWelcomeScreen(); }
     }
 
-    // Bind event listeners that are always present
+    // --- EVENT BINDING ---
     document.querySelectorAll('#sort-by, #sort-order, #group-by-date').forEach(el => el.addEventListener('change', applyFiltersAndRender));
-    document.getElementById('change-drive-btn').addEventListener('click', async () => {
-        if (confirm('确定要更换盘符吗？这将清除当前选择。')) {
-            await api.post('/api/reset-config');
-            location.reload();
-        }
-    });
-    contentArea.addEventListener('click', e => {
-        const card = e.target.closest('.card');
-        if (card && card.dataset.id) openPlayer(card.dataset.id);
-    });
+    document.getElementById('change-drive-btn').addEventListener('click', async () => { if (confirm('您确定要更换盘符吗? 这会清除当前的选择。')) { await api.post('/api/reset-config'); location.reload(); } });
+    refreshBtn.addEventListener('click', () => handleRefresh(false));
+    contentArea.addEventListener('click', e => { const card = e.target.closest('.card'); if (card && card.dataset.id) { const wp = allWallpapers.find(w => w.id === card.dataset.id); if (wp) openPlayer(wp); } });
     document.getElementById('close-player-btn').addEventListener('click', closePlayer);
     playerDialog.addEventListener('click', e => { if (e.target === playerDialog) closePlayer(); });
     
