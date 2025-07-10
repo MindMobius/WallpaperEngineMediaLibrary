@@ -72,8 +72,11 @@
 
     <div id="welcome-screen">
         <img src="/public/icon-192-maskable.png" alt="壁纸引擎媒体库" style="height: 100px;">
+        <a href="https://github.com/MindMobius/WallpaperEngineMediaLibrary" target="_blank" style="color: var(--text-color); text-decoration: none; font-weight: small; display: block; margin-top: 10px;">
+            <img src="/public/github-mark-white.svg" alt="GitHub" style="height: 1.2em; vertical-align: -0.2em; margin-right: 5px;">
+            MindMobius/WallpaperEngineMediaLibrary
+        </a>
         <h1>欢迎使用壁纸引擎媒体库</h1>
-        <h2>Wallpaper Engine Media Library</h2>
         <p>开始使用前, 请选择您的 Steam 安装的硬盘</p>
         <div class="drive-grid" id="drive-grid-container"></div>
     </div>
@@ -81,13 +84,20 @@
     <div id="main-app" class="hidden">
         <div class="container">
             <div class="header">
-                <div style="display: flex; align-items: center; gap: 20px;">
-                    <h1>
-                        <img src="/public/icon-192-maskable.png" alt="logo" style="height: 1.2em; vertical-align: -0.2em; margin-right: 10px;">
-                        壁纸媒体库
-                    </h1>
-                    <button id="speed-mode-btn" class="normal-speed">匀速行驶</button>
+                <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 20px;">
+                        <h1>
+                            <img src="/public/icon-192-maskable.png" alt="logo" style="height: 1.2em; vertical-align: -0.2em; margin-right: 10px;">
+                            壁纸媒体库
+                        </h1>
+                        <button id="speed-mode-btn" class="normal-speed">一键超速</button>
+                    </div>
+                    <a href="https://github.com/MindMobius/WallpaperEngineMediaLibrary" target="_blank" style="color: var(--text-color); text-decoration: none; font-weight: small; display: block;">
+                        <img src="/public/github-mark-white.svg" alt="GitHub" style="height: 1.2em; vertical-align: -0.2em; margin-right: 5px;">
+                        MindMobius/WallpaperEngineMediaLibrary
+                    </a>
                 </div>
+
                 <div class="header-controls">
                     <div class="controls" style="display: inline-block;">
                         <label>排序:</label>
@@ -366,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (speedMode === 'normal') {
             if (confirm('请在安全环境下超速！\n\n您确定要进入超速模式吗？')) {
                 speedMode = 'overspeed';
-                speedBtn.textContent = '超速行驶';
+                speedBtn.textContent = '退出超速';
                 speedBtn.className = 'over-speed';
                 // vvv 修改CSS变量为红色 vvv
                 root.style.setProperty('--drive-mode-color', 'var(--accent-color)');
@@ -375,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } else {
             speedMode = 'normal';
-            speedBtn.textContent = '匀速行驶';
+            speedBtn.textContent = '一键超速';
             speedBtn.className = 'normal-speed';
             // vvv 修改CSS变量为蓝色 vvv
             root.style.setProperty('--drive-mode-color', '#0632BD');

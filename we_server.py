@@ -216,7 +216,7 @@ def get_local_ip():
 
 def main():
     parser = argparse.ArgumentParser(description=f"{APP_NAME} - 用于壁纸引擎视频的Web浏览器。")
-    parser.add_argument('--host', type=str, default='127.0.0.1', help='服务器绑定的主机 (例如 0.0.0.0 用于外部访问)。')
+    parser.add_argument('--host', type=str, default='0.0.0.0', help='服务器绑定的主机 (例如 0.0.0.0 用于外部访问)。')
     parser.add_argument('--port', type=int, default=9888, help='服务器运行的端口。')
     args = parser.parse_args()
     
