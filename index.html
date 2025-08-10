@@ -48,16 +48,21 @@
         .group-container h2 { font-size: 1.5em; border-bottom: 2px solid var(--hover-bg); padding-bottom: 10px; margin-top: 40px; margin-bottom: 20px; }
         .wallpaper-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
         
-        .card { background-color: var(--card-bg); border-radius: 6px; overflow: hidden; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; display: flex; flex-direction: column; height: 160px; position: relative; }
+        .card { background-color: var(--card-bg); border-radius: 6px; overflow: hidden; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; display: flex; flex-direction: column; position: relative; aspect-ratio: 1 / 1; }
         .card:hover { transform: scale(1.03); box-shadow: 0 10px 20px rgba(0,0,0,0.5); }
-        .card-content { padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .card-title { font-weight: bold; text-align: center; margin-bottom: 10px; font-size: 1.1em; }
+        .card-preview { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: 1; }
+        .card-preview img { width: 100%; height: 100%; object-fit: contain; object-position: center; }
+        .card-content { position: relative; z-index: 2; padding: 15px; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100%; }
+        .card-id { position: absolute; top: 8px; left: 8px; z-index: 3; background-color: rgba(0, 0, 0, 0.7); color: var(--text-color); padding: 4px 8px; border-radius: 4px; font-size: 0.8em; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.2); user-select: none; }
+        .card-title-container { position: relative; width: 100%; text-align: center; padding: 10px 0; }
+        .card-title-backdrop { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to top, rgba(0,0,0,0) 0%, rgba(0,0,0,0.1) 100%); z-index: -1; }
+        .card-title { font-weight: bold; margin: 15px 0 10px 0; font-size: 1.1em; position: relative; z-index: 2; text-shadow: 0 1px 10px rgba(0,0,0,0.8); }
         .card-tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
         .card-tags .tag { font-size: 0.8em; padding: 3px 8px; cursor: default; }
-        .card-play-count { position: absolute; bottom: 8px; right: 12px; font-size: 0.8em; color: var(--text-secondary-color); background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; }
-        .card-progress-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background-color: rgba(255,255,255,0.1); }
+        .card-play-count { position: absolute; bottom: 8px; right: 12px; font-size: 0.8em; color: var(--text-secondary-color); background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px; z-index: 3; }
+        .card-progress-bar { position: absolute; bottom: 0; left: 0; width: 100%; height: 5px; background-color: rgba(255,255,255,0.1); z-index: 3; }
         .card-progress-bar-inner { height: 100%; background-color: var(--drive-mode-color); }
-        
+
         .skeleton { animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; } @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
         .skeleton .card { background-color: #2a2a2a; } .skeleton .card-title, .skeleton .card-tags { background-color: #444; border-radius: 4px; }
         .skeleton .card-title { height: 20px; width: 70%; margin-bottom: 15px; } .skeleton .card-tags { height: 15px; width: 50%; }
@@ -99,6 +104,8 @@
                 </div>
 
                 <div class="header-controls">
+                    <label>预览图:</label>
+                    <input type="checkbox" id="show-preview" />
                     <div class="controls" style="display: inline-block;">
                         <label>排序:</label>
                         <select id="sort-by"><option value="date">时间</option><option value="title">名称</option></select>
@@ -226,17 +233,57 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function createCard(wp) {
-    const card = document.createElement('div');
-    card.className = 'card';
-    card.dataset.id = wp.id; // 只保留 data-id，事件由父容器统一处理
-    
-    const tagsHtml = wp.tags.slice(0, 3).map(tag => `<span class="tag">${tag}</span>`).join('');
-    const playCountHtml = wp.playCount > 0 ? `<div class="card-play-count">次数: ${wp.playCount}</div>` : '';
-    const progressBarHtml = wp.progress > 0.01 ? `<div class="card-progress-bar"><div class="card-progress-bar-inner" style="width: ${wp.progress * 100}%;"></div></div>` : '';
-    
-    card.innerHTML = `<div class="card-content"><div class="card-title">${wp.title}</div><div class="card-tags">${tagsHtml}</div></div>${playCountHtml}${progressBarHtml}`;
-    return card;
-}
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.dataset.id = wp.id;
+
+        // 添加预览图容器
+        let previewHtml = '';
+        const showPreview = document.getElementById('show-preview')?.checked;
+        if (showPreview && wp.preview) {
+            previewHtml = `<div class="card-preview"><img src="/api/preview/${wp.id}" alt="Preview"></div>`;
+        }
+
+        // 移除显示预览图时的标题背景
+        const titleBackdrop = showPreview && wp.preview ? '<div class="card-title-backdrop"></div>' : '';
+
+        const tagsHtml = wp.tags.slice(0, 3).map(tag => `<span class="tag">${tag}</span>`).join('');
+        const playCountHtml = wp.playCount > 0 ? `<div class="card-play-count">次数: ${wp.playCount}</div>` : '';
+        const progressBarHtml = wp.progress > 0.01 ? `<div class="card-progress-bar"><div class="card-progress-bar-inner" style="width: ${wp.progress * 100}%;"></div></div>` : '';
+
+        card.innerHTML = `
+        ${previewHtml}
+        <div class="card-content">
+            <div class="card-id" data-wallpaper-id="${wp.id}">${wp.id}</div>
+            <div class="card-title-container">
+                <div class="card-title">${wp.title}</div>
+            </div>
+            <div class="card-tags">${tagsHtml}</div>
+        </div>
+        ${playCountHtml}
+        ${progressBarHtml}
+    `;
+
+        // 为ID添加点击事件，用于复制ID
+        const idElement = card.querySelector('.card-id');
+        idElement.addEventListener('click', (e) => {
+            e.stopPropagation(); // 阻止事件冒泡，避免触发卡片点击事件
+
+            // 复制ID到剪贴板
+            navigator.clipboard.writeText(wp.id).then(() => {
+                // 显示复制成功的视觉反馈
+                const originalText = idElement.textContent;
+                idElement.textContent = '已复制!';
+                setTimeout(() => {
+                    idElement.textContent = originalText;
+                }, 1000);
+            }).catch(err => {
+                console.error('复制失败:', err);
+            });
+        });
+
+        return card;
+    }
     
     function renderWallpapers(wallpapersToRender) {
         contentArea.innerHTML = '';
@@ -315,18 +362,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyFiltersAndRender() {
         let filteredWallpapers = allWallpapers;
 
-        // vvv 简化的过滤逻辑 vvv
-        // 1. Filter by speed mode
-        // 后端已经帮我们分好类了，所以这里直接比较即可
+        // Filter by speed mode
         filteredWallpapers = filteredWallpapers.filter(wp => wp.rating === speedMode);
-        // ^^^ 简化的过滤逻辑 ^^^
 
-        // 2. Filter by tag
+        // Filter by tag
         if (activeTag !== '所有') {
             filteredWallpapers = filteredWallpapers.filter(wp => wp.tags.includes(activeTag));
         }
 
-        // 3. Sort (保持不变)
+        // Sort
         const sortBy = document.getElementById('sort-by').value;
         const isDesc = document.getElementById('sort-order').value === 'desc';
         filteredWallpapers.sort((a, b) => {
@@ -427,22 +471,42 @@ document.addEventListener('DOMContentLoaded', () => {
         renderDrives(drives);
     }
 
+    // 在 main 函数中添加预览图开关的初始化
     async function main() {
         document.documentElement.style.setProperty('--drive-mode-color', '#0632BD');
         const config = await api.get('/api/config-status');
-        if (config.configured) { await initializeMainApp(); }
-        else { await initializeWelcomeScreen(); }
+
+        // 初始化预览图开关事件监听器
+        document.getElementById('show-preview').addEventListener('change', applyFiltersAndRender);
+
+        if (config.configured) {
+            await initializeMainApp();
+        } else {
+            await initializeWelcomeScreen();
+        }
     }
 
     // --- EVENT BINDING ---
     document.querySelectorAll('#sort-by, #sort-order, #group-by-date').forEach(el => el.addEventListener('change', applyFiltersAndRender));
     document.getElementById('change-drive-btn').addEventListener('click', async () => { if (confirm('您确定要更换盘符吗? 这会清除当前的选择。')) { await api.post('/api/reset-config'); location.reload(); } });
     refreshBtn.addEventListener('click', () => handleRefresh(false));
-    contentArea.addEventListener('click', e => { const card = e.target.closest('.card'); if (card && card.dataset.id) { const wp = allWallpapers.find(w => w.id === card.dataset.id); if (wp) openPlayer(wp); } });
+    contentArea.addEventListener('click', e => {
+        // 检查点击的是否是ID元素
+        if (e.target.classList.contains('card-id')) {
+            return; // ID元素有自己的点击处理逻辑，不触发视频播放
+        }
+        
+        const card = e.target.closest('.card');
+        if (card && card.dataset.id) {
+            const wp = allWallpapers.find(w => w.id === card.dataset.id);
+            if (wp) openPlayer(wp);
+        }
+    });
     document.getElementById('close-player-btn').addEventListener('click', closePlayer);
     document.getElementById('speed-mode-btn').addEventListener('click', handleSpeedModeChange);
     playerDialog.addEventListener('click', e => { if (e.target === playerDialog) closePlayer(); });
-    
+    document.getElementById('show-preview').addEventListener('change', applyFiltersAndRender);
+
     main();
 });
 </script>

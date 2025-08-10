@@ -203,8 +203,11 @@ def scan_wallpapers(drive_letter: str = None):
                     if video_path.exists():
                         tags = data.get("tags", [])
                         all_tags.update(tags)
-                        raw_rating = data.get("ratingsex", "none")
-                        rating_mode = "overspeed" if raw_rating in OVERSPEED_RATINGS else "normal"
+                        content_rating = data.get("contentrating", "Everyone")
+                        rating_mode = "overspeed" if content_rating == "Mature" else "normal"
+                        preview_file = data.get("preview", "preview.jpg")
+                        preview_path = item_dir / preview_file
+                        preview_exists = preview_path.exists()
                         wallpapers_cache.append({
                             "id": item_dir.name,
                             "title": data.get("title", "无标题"),
@@ -212,7 +215,8 @@ def scan_wallpapers(drive_letter: str = None):
                             "tags": tags,
                             "rating": rating_mode,
                             "mtime": video_path.stat().st_mtime,
-                            "date": datetime.fromtimestamp(video_path.stat().st_mtime).strftime("%Y-%m-%d")
+                            "date": datetime.fromtimestamp(video_path.stat().st_mtime).strftime("%Y-%m-%d"),
+                            "preview": preview_file if preview_exists else None
                         })
             except Exception:
                 continue
@@ -370,6 +374,20 @@ def get_video_stream(wallpaper_id: str, request: Request):
     wallpaper = next((wp for wp in wallpapers_cache if wp["id"] == wallpaper_id), None)
     if not wallpaper: raise HTTPException(status_code=404, detail="Wallpaper not found")
     return stream_video(wallpaper["path"], request)
+
+@app.get("/api/preview/{wallpaper_id}")
+def get_preview_image(wallpaper_id: str):
+    wallpaper = next((wp for wp in wallpapers_cache if wp["id"] == wallpaper_id), None)
+    if not wallpaper or not wallpaper.get("preview"):
+        raise HTTPException(status_code=404, detail="Preview not found")
+    
+    item_dir = Path(wallpaper["path"]).parent
+    preview_path = item_dir / wallpaper["preview"]
+    
+    if not preview_path.exists():
+        raise HTTPException(status_code=404, detail="Preview file not found")
+    
+    return FileResponse(str(preview_path))
 
 # --- STARTUP LOGIC (Unchanged) ---
 def get_local_ip():
