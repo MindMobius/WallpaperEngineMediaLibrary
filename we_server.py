@@ -198,7 +198,7 @@ def scan_wallpapers(drive_letter: str = None):
         if project_file.exists():
             try:
                 data = json.load(open(project_file, 'r', encoding='utf-8'))
-                if data.get("type") == "video" and data.get("file"):
+                if data.get("type", "").lower() == "video" and data.get("file"):
                     video_path = item_dir / data["file"]
                     if video_path.exists():
                         tags = data.get("tags", [])
