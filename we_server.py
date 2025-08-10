@@ -1,11 +1,13 @@
 import os
-import sys # <-- Added
+import sys
 import json
 import string
 import mimetypes
 import argparse
 import socket
 import psutil
+import winreg
+import vdf
 from pathlib import Path
 from datetime import datetime
 from fastapi import FastAPI, HTTPException, Request
@@ -89,18 +91,109 @@ def record_visitor(request: Request):
         save_config()
 
 # --- CORE SCANNING LOGIC (Unchanged) ---
-def scan_wallpapers(drive_letter: str):
-    global wallpapers_cache, all_tags, status_info; wallpapers_cache.clear(); all_tags.clear()
-    steamapps_patterns = ["SteamLibrary/steamapps", "Program Files (x86)/Steam/steamapps", "Steam/steamapps", "steamapps"]; base_path = None
-    for pattern in steamapps_patterns:
-        path_to_check = Path(f"{drive_letter}:\\") / pattern / "workshop" / "content"
-        if (path_to_check / WE_WORKSHOP_ID).is_dir(): base_path = path_to_check; break
-    if not base_path:
-        status_info["scan_path"] = f"在 {drive_letter}:\\ 盘未找到工坊目录"; status_info["item_count"] = 0
-        print(f"警告: 未在 {drive_letter} 盘找到壁纸引擎工坊目录。"); return False
-    content_path = base_path / WE_WORKSHOP_ID; status_info["scan_path"] = str(content_path); print(f"正在扫描: {content_path}")
+# 添加新的辅助函数
+def get_steam_install_path():
+    """
+    通过读取注册表获取 Steam 的安装路径
+    """
+    try:
+        # 尝试 64 位注册表路径
+        reg_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 
+                                 r"SOFTWARE\WOW6432Node\Valve\Steam")
+        install_path, _ = winreg.QueryValueEx(reg_key, "InstallPath")
+        winreg.CloseKey(reg_key)
+        return install_path
+    except FileNotFoundError:
+        try:
+            # 尝试 32 位注册表路径
+            reg_key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, 
+                                     r"SOFTWARE\Valve\Steam")
+            install_path, _ = winreg.QueryValueEx(reg_key, "InstallPath")
+            winreg.CloseKey(reg_key)
+            return install_path
+        except Exception:
+            return None
+    except Exception:
+        return None
+
+def find_we_workshop_path():
+    """
+    查找 Wallpaper Engine 工坊目录路径
+    """
+    # 首先获取 Steam 安装路径
+    steam_path = get_steam_install_path()
+    if not steam_path:
+        return None
+    
+    # 构造 libraryfolders.vdf 文件路径
+    vdf_path = Path(steam_path) / "config" / "libraryfolders.vdf"
+    if not vdf_path.exists():
+        return None
+    
+    try:
+        # 解析 libraryfolders.vdf 文件
+        with open(vdf_path, 'r', encoding='utf-8') as f:
+            library_data = vdf.load(f)
+        
+        # 遍历所有库路径，查找包含 Wallpaper Engine (431960) 的路径
+        for key, library in library_data["libraryfolders"].items():
+            if "apps" in library and WE_WORKSHOP_ID in library["apps"]:
+                # 找到包含 Wallpaper Engine 的库
+                library_path = Path(library["path"])
+                workshop_path = library_path / "steamapps" / "workshop" / "content" / WE_WORKSHOP_ID
+                if workshop_path.exists():
+                    return workshop_path
+        
+        # 如果在已知库中没找到，则检查 Steam 安装目录本身
+        local_workshop_path = Path(steam_path) / "steamapps" / "workshop" / "content" / WE_WORKSHOP_ID
+        if local_workshop_path.exists():
+            return local_workshop_path
+            
+    except Exception as e:
+        print(f"解析 libraryfolders.vdf 出错: {e}")
+        return None
+    
+    return None
+
+def scan_wallpapers(drive_letter: str = None):
+    """
+    扫描壁纸文件，如果提供了 drive_letter 则使用原有逻辑，
+    否则尝试自动查找 Wallpaper Engine 工坊目录
+    """
+    global wallpapers_cache, all_tags, status_info
+    wallpapers_cache.clear()
+    all_tags.clear()
+    
+    # 如果提供了 drive_letter，则使用原有逻辑
+    if drive_letter:
+        steamapps_patterns = ["SteamLibrary/steamapps", "Program Files (x86)/Steam/steamapps", "Steam/steamapps", "steamapps"]
+        base_path = None
+        for pattern in steamapps_patterns:
+            path_to_check = Path(f"{drive_letter}:\\") / pattern / "workshop" / "content"
+            if (path_to_check / WE_WORKSHOP_ID).is_dir():
+                base_path = path_to_check
+                break
+        if not base_path:
+            status_info["scan_path"] = f"在 {drive_letter}:\\ 盘未找到工坊目录"
+            status_info["item_count"] = 0
+            print(f"警告: 未在 {drive_letter} 盘找到壁纸引擎工坊目录。")
+            return False
+    else:
+        # 尝试自动查找 Wallpaper Engine 工坊目录
+        base_path = find_we_workshop_path()
+        if not base_path:
+            status_info["scan_path"] = "未找到工坊目录"
+            status_info["item_count"] = 0
+            print("警告: 未找到壁纸引擎工坊目录。")
+            return False
+
+    content_path = base_path / WE_WORKSHOP_ID if drive_letter else base_path
+    status_info["scan_path"] = str(content_path)
+    print(f"正在扫描: {content_path}")
+    
     for item_dir in content_path.iterdir():
-        if not item_dir.is_dir(): continue
+        if not item_dir.is_dir():
+            continue
         project_file = item_dir / "project.json"
         if project_file.exists():
             try:
@@ -108,12 +201,26 @@ def scan_wallpapers(drive_letter: str):
                 if data.get("type") == "video" and data.get("file"):
                     video_path = item_dir / data["file"]
                     if video_path.exists():
-                        tags = data.get("tags", []); all_tags.update(tags)
+                        tags = data.get("tags", [])
+                        all_tags.update(tags)
                         raw_rating = data.get("ratingsex", "none")
                         rating_mode = "overspeed" if raw_rating in OVERSPEED_RATINGS else "normal"
-                        wallpapers_cache.append({"id": item_dir.name, "title": data.get("title", "无标题"), "path": str(video_path.resolve()), "tags": tags, "rating": rating_mode, "mtime": video_path.stat().st_mtime, "date": datetime.fromtimestamp(video_path.stat().st_mtime).strftime("%Y-%m-%d")})
-            except Exception: continue
-    status_info["item_count"] = len(wallpapers_cache); status_info["last_refresh"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S"); print(f"扫描完成, 找到 {status_info['item_count']} 个壁纸。"); return True
+                        wallpapers_cache.append({
+                            "id": item_dir.name,
+                            "title": data.get("title", "无标题"),
+                            "path": str(video_path.resolve()),
+                            "tags": tags,
+                            "rating": rating_mode,
+                            "mtime": video_path.stat().st_mtime,
+                            "date": datetime.fromtimestamp(video_path.stat().st_mtime).strftime("%Y-%m-%d")
+                        })
+            except Exception:
+                continue
+    
+    status_info["item_count"] = len(wallpapers_cache)
+    status_info["last_refresh"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"扫描完成, 找到 {status_info['item_count']} 个壁纸。")
+    return True
 
 # --- VIDEO STREAMING (Unchanged) ---
 def stream_video(video_path: str, request: Request):
@@ -152,36 +259,81 @@ def get_status():
 def refresh_data(request: Request):
     record_visitor(request)
     if config.get("selected_drive"):
-        print("客户端请求刷新..."); scan_success = scan_wallpapers(config["selected_drive"])
-        if scan_success: return {"status": "success", "message": "媒体库已刷新。"}
-        else: return JSONResponse({"status": "error", "message": "刷新时未找到工坊目录。"}, status_code=404)
+        print("客户端请求刷新...")
+        # 根据配置的驱动器类型选择不同的扫描方式
+        if config["selected_drive"] == "auto":
+            # 使用自动检测模式
+            scan_success = scan_wallpapers()  # 不传递参数，使用自动检测
+        else:
+            # 使用指定盘符模式
+            scan_success = scan_wallpapers(config["selected_drive"])
+        
+        if scan_success: 
+            return {"status": "success", "message": "媒体库已刷新。"}
+        else: 
+            return JSONResponse({"status": "error", "message": "刷新时未找到工坊目录。"}, status_code=404)
     return JSONResponse({"status": "error", "message": "没有配置需要刷新的盘符。"}, status_code=400)
 
 @app.get("/api/config-status")
 def get_config_status(): return {"configured": config.get("selected_drive") is not None}
 
+# 修改 get_drives 函数
 @app.get("/api/drives")
 def get_drives():
-    drives = [];
+    drives = []
+    
+    # 添加自动检测选项
+    drives.append({
+        "letter": "auto",
+        "total": "自动检测",
+        "used": "",
+        "free": "",
+        "percent": 0
+    })
+    
     for partition in psutil.disk_partitions(all=False):
-        if 'cdrom' in partition.opts or partition.fstype == '': continue
+        if 'cdrom' in partition.opts or partition.fstype == '':
+            continue
         try:
             usage = psutil.disk_usage(partition.mountpoint)
-            drives.append({"letter": Path(partition.device).drive.replace(':', '').replace('\\', ''), "total": format_bytes(usage.total), "used": format_bytes(usage.used), "free": format_bytes(usage.free), "percent": usage.percent})
-        except PermissionError: continue
+            drives.append({
+                "letter": Path(partition.device).drive.replace(':', '').replace('\\', ''),
+                "total": format_bytes(usage.total),
+                "used": format_bytes(usage.used),
+                "free": format_bytes(usage.free),
+                "percent": usage.percent
+            })
+        except PermissionError:
+            continue
     return drives
 
 class DriveSelection(BaseModel): drive: str
+
+# 修改 select_drive 函数
 @app.post("/api/select-drive")
 def select_drive(selection: DriveSelection, request: Request):
-    record_visitor(request); global config
-    drive_letter = selection.drive.upper()
-    if not (len(drive_letter) == 1 and 'A' <= drive_letter <= 'Z'): return JSONResponse({"status": "error", "message": "无效的盘符。"}, status_code=400)
-    scan_success = scan_wallpapers(drive_letter)
-    if not scan_success: return JSONResponse({"status": "error", "message": "在所选盘符上未找到壁纸引擎目录。"}, status_code=404)
-    config["selected_drive"] = drive_letter
-    save_config()
-    return {"status": "success", "message": f"盘符 {drive_letter} 已选择并扫描。"}
+    record_visitor(request)
+    global config
+    
+    # 处理自动检测模式
+    if selection.drive.lower() == "auto":
+        scan_success = scan_wallpapers()  # 不传递 drive_letter 参数
+        if not scan_success:
+            return JSONResponse({"status": "error", "message": "未找到壁纸引擎目录。"}, status_code=404)
+        config["selected_drive"] = "auto"  # 标记为自动检测模式
+        save_config()
+        return {"status": "success", "message": "已自动检测并扫描壁纸引擎目录。"}
+    else:
+        # 原有逻辑处理指定盘符的情况
+        drive_letter = selection.drive.upper()
+        if not (len(drive_letter) == 1 and 'A' <= drive_letter <= 'Z'):
+            return JSONResponse({"status": "error", "message": "无效的盘符。"}, status_code=400)
+        scan_success = scan_wallpapers(drive_letter)
+        if not scan_success:
+            return JSONResponse({"status": "error", "message": "在所选盘符上未找到壁纸引擎目录。"}, status_code=404)
+        config["selected_drive"] = drive_letter
+        save_config()
+        return {"status": "success", "message": f"盘符 {drive_letter} 已选择并扫描。"}
 
 @app.post("/api/reset-config")
 def reset_config():

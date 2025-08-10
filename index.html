@@ -163,7 +163,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const card = document.createElement('div');
             card.className = 'drive-card';
             card.onclick = () => selectDrive(drive.letter);
-            card.innerHTML = `
+
+            if (drive.letter === 'auto') {
+                card.innerHTML = `
+                <div class="drive-letter">AUTO</div>
+                <div class="drive-stats">
+                    <div>自动检测 Steam 库</div>
+                    <div>无需手动选择盘符</div>
+                </div>
+            `;
+            } else {
+                card.innerHTML = `
                 <div class="drive-letter">${drive.letter}</div>
                 <div class="drive-stats">
                     <div>总空间: ${drive.total}</div>
@@ -174,6 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
             `;
+            }
             driveGridContainer.appendChild(card);
         });
     }
@@ -218,7 +229,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const card = document.createElement('div');
     card.className = 'card';
     card.dataset.id = wp.id; // 只保留 data-id，事件由父容器统一处理
-    // card.onclick = ... 这一行已被彻底删除
     
     const tagsHtml = wp.tags.slice(0, 3).map(tag => `<span class="tag">${tag}</span>`).join('');
     const playCountHtml = wp.playCount > 0 ? `<div class="card-play-count">次数: ${wp.playCount}</div>` : '';
