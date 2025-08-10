@@ -47,7 +47,7 @@ Wallpaper Engine Media Library (WEML) 帮你轻松解决这些问题！
 
 ### 直接下载
 
-已打包好的exe文件，下载后双击直接运行即可：[WEML v1.0.0](https://github.com/MindMobius/WallpaperEngineMediaLibrary/releases/download/v1.0.0/WEML.exe)
+已打包好的exe文件，下载后双击直接运行即可：[WEMLv1.1.0.exe](https://github.com/MindMobius/WallpaperEngineMediaLibrary/releases/download/v1.1.0/WEMLv1.1.0.exe)
 
 ### 编译开发
 在Python环境开发
